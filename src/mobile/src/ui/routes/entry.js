@@ -1,11 +1,13 @@
-/* global __DEV__ */
+import 'shared-modules/libs/global';
 import get from 'lodash/get';
+import noop from 'lodash/noop';
 import { Navigation } from 'react-native-navigation';
 import { withNamespaces } from 'react-i18next';
 import { Text, TextInput, NetInfo, YellowBox } from 'react-native';
 import { Provider } from 'react-redux';
 import { changeIotaNode, SwitchingConfig } from 'shared-modules/libs/iota';
 import sharedStore from 'shared-modules/store';
+import iotaNativeBindings, { overrideAsyncTransactionObject } from 'shared-modules/libs/iota/nativeBindings';
 import { assignAccountIndexIfNecessary } from 'shared-modules/actions/accounts';
 import { fetchNodeList as fetchNodes } from 'shared-modules/actions/polling';
 import { setCompletedForcedPasswordUpdate } from 'shared-modules/actions/settings';
@@ -14,8 +16,8 @@ import i18next from 'shared-modules/libs/i18next';
 import axios from 'axios';
 import { getLocaleFromLabel } from 'shared-modules/libs/i18n';
 import { clearKeychain } from 'libs/keychain';
+import { getDigestFn } from 'libs/nativeModules';
 import { persistStoreAsync, migrate, versionCheck, resetIfKeychainIsEmpty } from 'libs/store';
-import { bugsnag } from 'libs/bugsnag';
 import registerScreens from 'ui/routes/navigation';
 
 const launch = (store) => {
@@ -52,7 +54,7 @@ const launch = (store) => {
     // Select initial screen
     const initialScreen = state.accounts.onboardingComplete
         ? navigateToForceChangePassword ? 'forceChangePassword' : 'login'
-        : 'languageSetup';
+        : 'walletSetup';
     renderInitialScreen(initialScreen, state, store);
 };
 
@@ -76,7 +78,7 @@ const renderInitialScreen = (initialScreen, state, store) => {
             },
         },
         statusBar: {
-            drawBehind: true,
+            drawBehind: false,
             backgroundColor: state.settings.theme.body.bg,
         },
     };
@@ -170,6 +172,8 @@ onAppStart()
     .then((store) => resetIfKeychainIsEmpty(store))
     .then((store) => versionCheck(store))
     .then((store) => {
+        overrideAsyncTransactionObject(iotaNativeBindings, getDigestFn());
+
         const initialize = (isConnected) => {
             store.dispatch({
                 type: ActionTypes.CONNECTION_CHANGED,
@@ -187,8 +191,4 @@ onAppStart()
 
         hasConnection('https://iota.org').then((isConnected) => initialize(isConnected));
     })
-    .catch((error) => {
-        const fn = __DEV__ ? console.error : bugsnag.notify; // eslint-disable-line no-console
-
-        return fn(error);
-    });
+    .catch(noop);
