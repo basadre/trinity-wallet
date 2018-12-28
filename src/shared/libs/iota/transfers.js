@@ -5,7 +5,6 @@ import get from 'lodash/get';
 import keys from 'lodash/keys';
 import each from 'lodash/each';
 import find from 'lodash/find';
-import findKey from 'lodash/findKey';
 import findIndex from 'lodash/findIndex';
 import head from 'lodash/head';
 import has from 'lodash/has';
@@ -171,7 +170,7 @@ export const isAboveMaxDepth = (attachmentTimestamp) => {
  *   @returns {array} Transfer object
  **/
 export const prepareTransferArray = (address, value, message, addressData, tag = DEFAULT_TAG) => {
-    const firstAddress = findKey(addressData, { index: 0 });
+    const firstAddress = get(find(addressData, { index: 0 }), 'address');
 
     if (!firstAddress) {
         throw new Error(Errors.EMPTY_ADDRESS_DATA);
@@ -188,7 +187,7 @@ export const prepareTransferArray = (address, value, message, addressData, tag =
     const isZeroValueTransaction = value === 0;
 
     if (isZeroValueTransaction) {
-        return iota.utils.noChecksum(address) in addressData
+        return includes(map(addressData, (addressObject) => addressObject.address), iota.utils.noChecksum(address))
             ? [transfer]
             : [transfer, assign({}, transfer, { address: firstAddress })];
     }
